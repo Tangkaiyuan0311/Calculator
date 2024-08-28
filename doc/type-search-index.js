@@ -1,0 +1,1 @@
+typeSearchIndex = [{"l":"All Classes and Interfaces","u":"allclasses-index.html"},{"p":"kaiyuan.assignment.Impl","l":"BasicCalculator"},{"p":"kaiyuan.assignment.model","l":"Calculator"},{"p":"kaiyuan.assignment.model","l":"Operation"}];updateSearchResults();

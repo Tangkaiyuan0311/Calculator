@@ -1,0 +1,1 @@
+packageSearchIndex = [{"l":"All Packages","u":"allpackages-index.html"},{"l":"kaiyuan.assignment.Impl"},{"l":"kaiyuan.assignment.model"}];updateSearchResults();
