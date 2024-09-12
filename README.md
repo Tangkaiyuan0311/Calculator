@@ -1,6 +1,6 @@
 # Calculator Project     
 
-## [Doc](./doc/index.html)
+## [Doc](https://htmlpreview.github.io/?https://github.com/Tangkaiyuan0311/Calculator/blob/main/doc/index.html)
 
 ## Overview
 
@@ -97,5 +97,5 @@ mvn test
 
 ## JavaDoc
 
-This project is fully documented here. [Doc](./doc/index.html)
+This project is fully documented here. [Doc](https://htmlpreview.github.io/?https://github.com/Tangkaiyuan0311/Calculator/blob/main/doc/index.html)
 
