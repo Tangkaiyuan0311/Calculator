@@ -4,7 +4,7 @@
 
 ## Overview
 
-This project is a simple yet extensible calculator implementation in Java, designed with the Open-Closed Principle (OCP) and best practices for maintainability and extensibility in mind. The calculator supports basic arithmetic operations (addition, subtraction, multiplication, and division) and allows for the dynamic addition of new operations at both compile and runtime.
+This project is a simple yet extensible calculator implementation in Java, designed with the Open-Closed Principle (OCP) and best practices for maintainability and extensibility in mind. The calculator supports basic arithmetic (chaining) operations (addition, subtraction, multiplication, and division) and allows changing implementation for each operation through Spring’s dependency injection system.
 
 ## Table of Contents
 
@@ -12,7 +12,6 @@ This project is a simple yet extensible calculator implementation in Java, desig
 - [Project Structure](#project-structure)
 - [Usage](#usage)
     - [Basic Operations](#basic-operations)
-    - [Adding Custom Operations](#adding-custom-operations)
     - [Chaining Operations](#chaining-operations)
 - [Testing](#testing)
 - [Doc](#JavaDoc)
@@ -25,13 +24,13 @@ The project is designed with the Open-Closed Principle at its core, which states
 
 #### How OCP Is Applied
 
-- **Enum-Based Operations**: The `Operation` enum defines basic operations. By leveraging the polymorphic nature of enums in Java, each operation is implemented as an enum constant with its own `apply` method. This design allows new operations to be added simply by adding new enum constants.
-- **Dynamic Operations**: The `BasicCalculator` class allows for dynamic operations to be added at runtime using the `addOperation` method. This means you can extend the calculator's functionality without altering its existing codebase.
+- **Enum-Based Operations**: The `Operation` enum defines the basic operations. Each operation in this enum is associated with a Spring bean that implements the operation. This design allows new operation or new implementation to be added via Spring beans without changing the core calculator logic.
+- **Dynamic Operations**: The `BasicCalculator` class relies on the `OperationFormat` interface, allowing different operation implementations to be injected as Spring beans. This approach facilitates adding new operations by simply providing new Spring-managed beans.
 
 ### Maintainability and Extensibility
 
 The project is structured to ensure that it is easy to maintain and extend:
-- **Separation of Concerns**: The project separates the definition of operations (via the `Operation` enum) from their execution (handled by the `BasicCalculator` class). This makes it easy to modify or add new operations without affecting other parts of the system.
+- **Separation of Concerns**: The project decouples the operation logic from the calculator’s execution, allowing operation logics to be injected dynamically at runtime.
 - **Modular Design**: The `Calculator` interface defines a contract that different implementations can adhere to. This makes it possible to introduce new types of calculators in the future without impacting existing functionality.
 
 ## Project Structure
@@ -40,17 +39,26 @@ calculator/
 ├── src/
 │   ├── main/
 │   │   ├── Impl/
-│   │   │   ├── test/
-│   │   │   │   ├── BasicCalculatorTest.java
 │   │   │   ├── BasicCalculator.java
 │   │   ├── model/
 │   │   │   ├── Calculator.java
+│   │   ├── operations/
 │   │   │   ├── Operation.java
+│   │   │   ├── OperationFormat.java
+│   │   │   ├── Impl/
+│   │   │   │   ├── AddOperation.java
+│   │   │   │   ├── DivideOperation.java
+│   │   │   │   ├── MultiplyOperation.java
+│   │   │   │   ├── SubtractOperation.java
+│   ├── test/
+│   │   ├── Impl/
+│   │   │   ├── BasicCalculatorTest.java
 ├── README.md
 ```
 - **`Calculator.java`**: The interface defining the contract for calculator implementations.
-- **`BasicCalculator.java`**: The main implementation of the `Calculator` interface, supporting both basic and dynamic operations.
+- **`BasicCalculator.java`**: The main implementation of the `Calculator` interface, it performs basic operations and supports chaining.
 - **`Operation.java`**: An enum representing basic arithmetic operations.
+- **`OperationFormat.java`**: Interface for the strategy pattern used for different operation implementations.
 - **`BasicCalculatorTest.java`**: Unit tests ensuring the correctness of the `BasicCalculator` implementation.
 
 ## Usage
@@ -62,28 +70,21 @@ The `BasicCalculator` class supports basic arithmetic operations such as additio
 Example:
 
 ```java
-BasicCalculator calculator = new BasicCalculator();
 Number result = calculator.basicCalculate(Operation.ADD, 2, 3);
 System.out.println(result); // Outputs 5.0
 ```
 
-### Adding Custom Operations
-
-You can add new operations to the calculator at runtime using the addOperation method:
-
-```java
-calculator.addOperation("customAdd", (num1, num2) -> num1.doubleValue() + 2 * num2.doubleValue());
-Number customResult = calculator.calculate("customAdd", 2, 3);
-System.out.println(customResult); // Outputs 8.0
-```
 
 ### Chaining Operations
 
 The chainOperations method allows you to perform multiple operations sequentially:
 
 ```java
-Number chainedResult = calculator.chainOperations(5, List.of(Operation.ADD, Operation.MULTIPLY), List.of(3, 2));
-System.out.println(chainedResult); // Outputs 16.0
+Number result = calculator.setState(5)
+        .chainOperations(Operation.ADD, 3)
+        .chainOperations(Operation.MULTIPLY, 5)
+        .getChainingResult();
+System.out.println(result); // Outputs 40
 ```
 
 ## Testing

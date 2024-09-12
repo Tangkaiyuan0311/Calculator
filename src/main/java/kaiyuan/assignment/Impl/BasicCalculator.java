@@ -1,108 +1,117 @@
 package kaiyuan.assignment.Impl;
 
 import kaiyuan.assignment.model.Calculator;
-import kaiyuan.assignment.model.Operation;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.function.BiFunction;
+import kaiyuan.assignment.operations.Operation;
+import kaiyuan.assignment.operations.OperationFormat;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationContext;
+import org.springframework.stereotype.Service;
 
 
 
 /**
- * A basic implementation of the {@link Calculator} interface that supports basic arithmetic operations
- * and allows for dynamic operation addition. This class also provides a method for chaining multiple
- * operations together.
- * <p>
- * The {@code BasicCalculator} supports operations defined in the {@link Operation} enum as well as custom
- * operations added at runtime.
- * </p>
+ * Basic implementation of the {@link Calculator} interface, using Spring's {@link ApplicationContext}
+ * to dynamically inject the appropriate operation strategy for each calculation.
+ *
+ * <p>This class supports both single basic operations (addition, subtraction, multiplication, and division)
+ * as well as chaining of operations, where the result of one operation is used as the input for the next.</p>
+ *
+ * <p>The {@code BasicCalculator} uses the {@link OperationFormat} beans, which are resolved dynamically
+ * through the Spring {@link ApplicationContext}. The state for chaining operations is maintained internally
+ * and can be initialized using the {@link #setState(Number)} method.</p>
+ *
+ * <p>Example usage:</p>
+ * <pre>
+ *     BasicCalculator calculator = new BasicCalculator(context);
+ *     calculator.setState(10)
+ *               .chainOperations(Operation.ADD, 5)
+ *               .chainOperations(Operation.MULTIPLY, 2);
+ *     Number result = calculator.getChainingResult(); // Result: 30
+ * </pre>
  */
+@Service
 public class BasicCalculator implements Calculator {
 
-    /**
-     * A map to store dynamically added operations. The keys are operation names (in uppercase),
-     * and the values are {@link BiFunction} objects that define the operation logic.
-     */
-    private final Map<String, BiFunction<Number, Number, Number>> supportedDynamicOperations = new HashMap<>();
+    private final ApplicationContext context;
+
+    // Holds the state for chained operations
+    private Number state = null;
 
     /**
-     * Constructs a new {@code BasicCalculator} instance with no initial dynamic operations.
+     * Constructor for {@code BasicCalculator}.
+     *
+     * @param context the Spring {@link ApplicationContext} used to retrieve operation strategies
      */
-    public BasicCalculator() {
-        // Default constructor
+    @Autowired
+    public BasicCalculator(ApplicationContext context) {
+        this.context = context;
     }
 
     /**
-     * Performs a basic calculation using the specified {@link Operation}.
+     * Performs a basic calculation by applying the given {@link Operation} to two numeric values.
      *
-     * @param operation the operation to perform
-     * @param num1      the first operand
-     * @param num2      the second operand
+     * <p>The actual calculation logic is handled by the corresponding {@link OperationFormat}
+     * bean, which is retrieved from the {@link ApplicationContext}.</p>
+     *
+     * @param operation the operation to be performed (ADD, SUBTRACT, MULTIPLY, or DIVIDE)
+     * @param num1 the first operand
+     * @param num2 the second operand
      * @return the result of the operation
-     * @throws UnsupportedOperationException if the operation is not supported
+     * @throws IllegalArgumentException if the operation is not supported
      */
     @Override
     public Number basicCalculate(Operation operation, Number num1, Number num2) {
-        return operation.apply(num1, num2);
+        OperationFormat strategy = (OperationFormat) context.getBean(operation.getImplBean());
+        return strategy.apply(num1, num2);
     }
 
     /**
-     * Calculates the result of the specified operation, which can be a standard or a dynamically added operation.
+     * Chains the given operation to the current state, applying the operation
+     * with {@code num} as the second operand and updating the state.
      *
-     * @param operationName the name of the operation to perform
-     * @param num1          the first operand
-     * @param num2          the second operand
-     * @return the result of the operation
-     * @throws UnsupportedOperationException if the operation is not supported
+     * @param operation the operation to be performed
+     * @param num the second operand for the operation
+     * @return the current {@code BasicCalculator} instance for method chaining
+     * @throws UnsupportedOperationException if no initial state has been set
      */
-    public Number calculate(String operationName, Number num1, Number num2) {
-        String upperCaseOperationName = operationName.toUpperCase();
-        if (supportedDynamicOperations.containsKey(upperCaseOperationName)) {
-            return supportedDynamicOperations.get(upperCaseOperationName).apply(num1, num2);
+    @Override
+    public Calculator chainOperations(Operation operation, Number num) {
+        if (state == null) {
+            throw new UnsupportedOperationException("Chaining operation has no initial state");
         }
-        if (Operation.isSupported(upperCaseOperationName)) {
-            return basicCalculate(Operation.valueOf(upperCaseOperationName), num1, num2);
-        }
-        throw new UnsupportedOperationException("Operation not supported: " + operationName);
+        state = basicCalculate(operation, state, num);
+        return this;
     }
 
     /**
-     * Adds a new dynamic operation to the calculator.
+     * Returns the result of the chained operations.
      *
-     * @param operationName the name of the operation (case-insensitive)
-     * @param function      a {@link BiFunction} defining the operation logic
-     * @throws IllegalArgumentException if the operation already exists
+     * @return the result of the chained operations
+     * @throws UnsupportedOperationException if no initial state has been set
      */
-    public void addOperation(String operationName, BiFunction<Number, Number, Number> function) {
-        operationName = operationName.toUpperCase();
-        if (supportedDynamicOperations.containsKey(operationName) || Operation.isSupported(operationName)) {
-            throw new IllegalArgumentException("Operation " + operationName + " already exists");
+    @Override
+    public Number getChainingResult() {
+        if (state == null) {
+            throw new UnsupportedOperationException("Chaining operation has no initial state");
         }
-        supportedDynamicOperations.put(operationName, function);
+        return state;
     }
 
     /**
-     * Performs a series of operations sequentially on an initial value.
+     * Sets the initial state for chaining operations. This state will be used
+     * as the first operand in the first chained operation.
      *
-     * @param initialValue the starting value for the chain of operations
-     * @param operations   the list of operations to perform, in order
-     * @param operands     the list of operands corresponding to each operation
-     * @return the result after applying all operations
-     * @throws IllegalArgumentException if the sizes of operations and operands do not match
+     * @param initialState the initial state of the calculator
+     * @return the current {@code BasicCalculator} instance for method chaining
+     * @throws UnsupportedOperationException if the state has already been initialized
      */
-    public Number chainOperations(Number initialValue, List<Operation> operations, List<Number> operands) {
-        if (operations.size() != operands.size()) {
-            throw new IllegalArgumentException("Operations and operands do not match");
+    @Override
+    public Calculator setState(Number initialState) {
+        if (state != null) {
+            throw new UnsupportedOperationException("State is already initialized");
         }
-
-        Number result = initialValue;
-
-        for (int i = 0; i < operations.size(); i++) {
-            Operation operation = operations.get(i);
-            Number nextValue = operands.get(i);
-            result = basicCalculate(operation, result, nextValue);
-        }
-        return result;
+        this.state = initialState;
+        return this;
     }
+
 }
